@@ -2,12 +2,13 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/tctalk-cn/gorchestrator/go/collection"
 	"net/http"
 
 	"github.com/martini-contrib/render"
 
 	"github.com/tctalk-cn/gorchestrator/go/inst"
-
 )
 
 // APIResponseCode is an OK/ERROR response code
@@ -89,6 +90,28 @@ type HttpAPI struct {
 	URLPrefix string
 }
 
-var API HttpAPI=HttpAPI{}
-var discoveryMetrics=
+var API HttpAPI = HttpAPI{}
+var discoveryMetrics = collection.CreateOrReturnCollection("DISCOVERY_METRICS")
+var queryMetrics = collection.CreateOrReturnCollection("BACKED_WRITES")
+var writeBufferMetrics = collection.CreateOrReturnCollection("WRITE_BUFFER")
 
+func (this *HttpAPI) getInstanceKeyInternal(host string, port string, resolve bool) (inst.InstanceKey, error) {
+	var instanceKey *inst.InstanceKey
+	var err error
+	if resolve {
+		instanceKey, err = inst.NewResolveInstanceKeyStrings(host, port)
+	} else {
+		instanceKey, err = inst.NewRawInstanceKeyStrings(host, port)
+	}
+	if err != nil {
+		return emptyInstanceKey, err
+	}
+	instanceKey, err = inst.FigureInstanceKey(instanceKey, nil)
+	if err != nil {
+		return emptyInstanceKey, err
+	}
+	if instanceKey == nil {
+		return emptyInstanceKey, fmt.Errorf("Unexpected nil instanceKey in getInstanceKeyInternal(%+v,%+v,%+v)", host, port, resolve)
+	}
+	return *instanceKey, nil
+}
